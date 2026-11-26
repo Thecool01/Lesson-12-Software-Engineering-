@@ -9,11 +9,13 @@ import RoomList from '@/components/RoomList';
 import TimeField from '@/components/TimeField';
 import AvailabilityResultPanel from '@/components/AvailabilityResultPanel';
 import RoomBookingsCard from '@/components/RoomBookingsCard';
+import CommonContractChecker from '@/components/CommonContractChecker';
 
 const DEFAULT_ATTENDEES = '1';
 const EQUIPMENT_OPTIONS = getEquipmentOptions(rooms);
 
 function App() {
+  const [mode, setMode] = useState<'campus' | 'common'>('campus');
   const [selectedRoomId, setSelectedRoomId] = useState<string>(rooms[0].id);
   const [startTime, setStartTime] = useState<string>('14:00');
   const [endTime, setEndTime] = useState<string>('15:00');
@@ -75,7 +77,16 @@ function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div role="group" aria-label="Checker mode" className="flex flex-wrap gap-2 mb-6">
+          {(['campus', 'common'] as const).map((checkerMode) => (
+            <button key={checkerMode} type="button" aria-pressed={mode === checkerMode}
+              onClick={() => setMode(checkerMode)}
+              className={`px-4 py-2 rounded-xl border text-sm font-medium ${mode === checkerMode ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700'}`}>
+              {checkerMode === 'campus' ? 'Campus Checker' : 'Common Contract Checker'}
+            </button>
+          ))}
+        </div>
+        {mode === 'common' ? <CommonContractChecker /> : <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left: Controls */}
           <section className="lg:col-span-3 flex flex-col gap-6">
             <RoomFilterPanel
@@ -166,7 +177,7 @@ function App() {
             />
             {selectedRoom && <RoomBookingsCard room={selectedRoom} />}
           </section>
-        </div>
+        </div>}
       </main>
 
       <footer className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">

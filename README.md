@@ -20,6 +20,56 @@ The availability rules are:
 
 Each selected room shows its existing bookings, so the user can see why a time slot is or is not free.
 
+## Common Contract Checker (Task #03)
+
+The application opens in **Campus Checker** mode. Use the mode buttons to open
+**Common Contract Checker**, which compares the shared code-based and low-code
+contract using the original A101 fixture and the same simulated current time (12:00).
+Enter a start in strict `HH:MM` format and a duration as a whole number of minutes.
+Results update immediately with the calculated end, decision, message, availability
+Boolean, and structured reason code. **Simulate blocked room** applies only to a
+temporary room object; the original bookings remain visible and unchanged.
+
+The implementation separates three responsibilities:
+
+- `bookingInput.ts` validates input syntax and calculates end minutes. Empty,
+  malformed, fractional, non-finite, and numerically unsafe values are rejected,
+  without clamping or fallback values.
+- `commonAvailability.ts` passes parsed input and a temporary A101 room object to
+  the existing `checkAvailability()` engine and maps its primary reason using
+  `getExplanationReasonCode()`. It returns `{ available, reasonCode, message }`.
+- `CommonContractChecker.tsx` holds input state and displays the result. It does
+  not decide booking availability.
+
+Reason priority remains malformed input, invalid interval, past/equal start,
+duration limit, blocked room, then overlap. Validation failures display
+**Validation Error**; blocking and overlap display **Unavailable**. The same-day
+restriction, 120-minute maximum, and allowance for touching endpoints are unchanged.
+An end beyond the same-day bounds displays **Outside same day** without wrapping.
+
+### Manual desktop and mobile verification
+
+1. Run `npm run dev` and open the Local URL printed by Vite.
+2. At a desktop viewport of 1280 × 900, confirm Campus Checker opens by default.
+   Change attendee capacity, toggle equipment, select rooms, and check that the
+   availability, booking list, and **Explain availability** still work.
+3. Open Common Contract Checker. Confirm A101 details, current time 12:00, and all
+   three original bookings are visible. Enter 15:00 and 60; expect end 16:00,
+   Available, `true`, `AVAILABLE`, and the available message.
+4. Change start to 13:30; expect Unavailable, `false`, `OVERLAP`, and an overlap
+   message. Restore 15:00 and toggle blocking; expect `ROOM_BLOCKED`, while all
+   bookings remain visible. Turn blocking off again.
+5. Try duration 0, 121, blank, and 1.5; expect Validation Error with the matching
+   interval, duration-limit, or whole-number feedback. Try blank/malformed start,
+   start 12:00, and 23:30 with duration 60; verify understandable feedback and no
+   stale Available result. Try 14:00/60 and 15:00/120; both should be Available.
+6. In browser responsive/device mode, repeat steps 2–5 at 375 × 812 and 320 × 740.
+   Confirm controls and cards stack, mode buttons wrap, messages and reason codes
+   fit, every input and booking remains reachable by vertical scrolling, and no
+   horizontal scrolling is needed. Tab through controls to check focus and labels.
+7. Switch back to Campus Checker and confirm its filters, room selection, and time
+   inputs were retained. Reload and confirm Campus Checker is the default again.
+
 ## Prerequisites
 
 - **Node.js:** a version that satisfies the test library's requirement, which is one of the following:
@@ -73,7 +123,12 @@ Run all automated tests once:
 npm test
 ```
 
-This runs the Vitest test suite (6 test files, 50 tests). It includes unit tests for the availability and filtering rules, integration tests that use the real room data, and React interface tests that render the application.
+This runs the Vitest test suite (12 test files, 121 tests: 70 original and 51 added
+for Task #03). The eight mandatory comparison scenarios T1–T8 are isolated in
+`src/lib/commonAvailability.comparison.test.ts`; additional parser, contract, and
+UI regressions are separate. Tests include the availability and filtering rules,
+integration checks using the real room data, complete fixture immutability, and
+React interface checks that verify changing inputs changes visible structured results.
 
 Other checks:
 
@@ -111,6 +166,8 @@ src/
     availability.ts         Booking rules: valid interval, 120-minute limit, blocked rooms, overlap detection
     roomFilter.ts           Capacity and equipment filtering, attendee parsing, equipment options
     time.ts                 Time formatting and conversion (minutes, HH:MM)
+    bookingInput.ts         Common input syntax validation and end-time calculation
+    commonAvailability.ts  A101 common-contract adapter to the existing rule engine
     *.test.ts               Unit and integration tests for the lib modules
   components/
     RoomFilterPanel.tsx     Attendee and equipment inputs
@@ -119,6 +176,7 @@ src/
     TimeField.tsx           Start and end time input
     AvailabilityResultPanel.tsx  Shows Available or Unavailable with the reason
     RoomBookingsCard.tsx    Lists the selected room's bookings
+    CommonContractChecker.tsx  Common inputs and structured results
 package.json                Project scripts and dependencies
 vite.config.ts              Vite setup, including the @ alias for the src folder
 vitest.config.ts            Test setup (Node environment, JSX setting, @ alias)
